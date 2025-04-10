@@ -228,6 +228,31 @@ function mapFold(inArray::Vector{T}, inFunc::Function, inArg::FT) where {T, FT}
   return (outArr, outArg)
 end
 
+"""
+```mapFoldSO``
+  Same as map fold. Applies the function to the map, however, it does not return the extra argument.
+"""
+function mapFoldSO(inArray::Vector{T}, inFunc::Function, inArg::FT) where {T, FT}
+  local outArg::FT = inArg
+  local outArr = Vector{T}(undef, length(inArray))
+  for (i,e) in enumerate(inArray)
+    res = inFunc(e, outArg)
+    outArr[i] = res
+  end
+  return outArr
+end
+
+function mapFoldRef(inArray::Vector{T}, inFunc::Function, inArg::FT, outRefArg::Ref{FT}) where {T, FT}
+  local outArg::FT = inArg
+  local outArr = Vector{T}(undef, length(inArray))
+  for (i,e) in enumerate(inArray)
+    res = inFunc(e, outRefArg)
+    outArr[i] = res
+  end
+  return outArr
+end
+
+
 
 """
 ```
@@ -237,9 +262,9 @@ Takes a Vector, an extra argument, an extra constant argument, and a function.
 The function will be applied to each element in the list, and the extra
 argument will be passed to the function and updated.
 """
-function map1Fold(inVec::Vector{TI}, inFunc::Function, inConstArg::ArgT1, inArg)  where {TI, ArgT1}
+function map1Fold(inVec::Vector{TI}, inFunc::Function, inConstArg::ArgT1, inArg, TY = Any)  where {TI, ArgT1}
   local outArg = inArg
-  local outVec::Vector
+  local outVec::Vector{TY}
   local res::Any
   for e in inVec
     (res, outArg) = inFunc(e, inConstArg, outArg)
