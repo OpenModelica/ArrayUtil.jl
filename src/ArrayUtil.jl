@@ -40,7 +40,7 @@ using MetaModelica.Dangerous: arrayGetNoBoundsChecking, arrayUpdateNoBoundsCheck
 applied for each element.  Since it will update the array values the returned
 array must have the same type, and thus the applied function must also return
 the same type. """
-function mapNoCopy(inArray::Vector{T}, inFunc::Function)  where {T}
+function mapNoCopy(inArray::Vector{T}, inFunc::F) where {T, F<:Function}
   local outArray::Vector{T} = inArray
   for i in 1:arrayLength(inArray)
     arrayUpdate(inArray, i, inFunc(arrayGetNoBoundsChecking(inArray, i)))
@@ -50,7 +50,7 @@ end
 
 """ Same as arrayMapNoCopy, but with an additional arguments that's updated for
 each call. """
-function mapNoCopy_1(inArray::Vector{T}, inFunc::Function, inArg::ArgT)  where {T, ArgT}
+function mapNoCopy_1(inArray::Vector{T}, inFunc::F, inArg::ArgT) where {T, ArgT, F<:Function}
   local outArg::ArgT = inArg
   local outArray::Vector{T} = inArray
   local e::T
@@ -98,7 +98,7 @@ function heapSort(inArray::Array{<:ModelicaInteger}) ::Array{ModelicaInteger}
   inArray
 end
 
-function findFirstOnTrue(inArray::Vector{T}, inPredicate::Function)  where {T}
+function findFirstOnTrue(inArray::Vector{T}, inPredicate::F) where {T, F<:Function}
   local outElement::Option{T}
 
   outElement = NONE()
@@ -111,7 +111,7 @@ function findFirstOnTrue(inArray::Vector{T}, inPredicate::Function)  where {T}
   outElement
 end
 
-function findFirstOnTrueWithIdx(inArray::Vector{T}, inPredicate::Function)  where {T}
+function findFirstOnTrueWithIdx(inArray::Vector{T}, inPredicate::F) where {T, F<:Function}
   local idxOut::ModelicaInteger = -1
   local outElement::Option{T}
   local idx::ModelicaInteger = 1
@@ -145,29 +145,24 @@ Takes an array and a function over the elements of the array, which is
 applied to each element. The updated elements will form a new array, leaving
 the original array unchanged.
 """
-function map(inArray::Vector{TI}, inFunc::Function)  where {TI}
-  local outArray::Vector{T1}
-  local len::Int = arrayLength(inArray)
-  local res
-  #=  If the array is empty, use list transformations to fix the types! =#
+function map(inArray::Vector{TI}, inFunc::F) where {TI, F<:Function}
+  local len = arrayLength(inArray)
   if len == 0
-    outArray = T1[]
-  else
-    res = inFunc(arrayGetNoBoundsChecking(inArray, 1))
-    outArray = arrayCreateNoInit(len, res)
-    arrayUpdateNoBoundsChecking(outArray, 1, res)
-    for i in 2:len
-      arrayUpdateNoBoundsChecking(outArray, i, inFunc(arrayGetNoBoundsChecking(inArray, i)))
-    end
+    return Any[]
   end
-  #=  If the array isn't empty, use the first element to create the new array. =#
-  outArray
+  local first_result = inFunc(inArray[1])
+  local outArray = Vector{typeof(first_result)}(undef, len)
+  outArray[1] = first_result
+  for i in 2:len
+    outArray[i] = inFunc(inArray[i])
+  end
+  return outArray
 end
 
 """ Takes an array, an extra arguments, and a function over the elements of the
 array, which is applied to each element. The updated elements will form a new
 array, leaving the original array unchanged. """
-function map1(inArray::Vector{TI}, inFunc::Function, inArg::ArgT)  where {TI, ArgT}
+function map1(inArray::Vector{TI}, inFunc::F, inArg::ArgT) where {TI, ArgT, F<:Function}
   local outArray::Vector
   local len::ModelicaInteger = arrayLength(inArray)
   local res
@@ -187,14 +182,14 @@ function map1(inArray::Vector{TI}, inFunc::Function, inArg::ArgT)  where {TI, Ar
 end
 
 """ Applies a non-returning function to all elements in an array. """
-function map0(inArray::Vector{T}, inFunc::Function)  where {T}
+function map0(inArray::Vector{T}, inFunc::F) where {T, F<:Function}
   for e in inArray
     inFunc(e)
   end
 end
 
 """ As map, but takes a list in and creates an array from the result. """
-function mapList(inList::List{TI}, inFunc::Function)  where {TI}
+function mapList(inList::List{TI}, inFunc::F) where {TI, F<:Function}
   local outArray::Vector
   local i::ModelicaInteger = 2
   local len::ModelicaInteger = listLength(inList)
@@ -218,7 +213,7 @@ Takes a vector, an extra argument and a function. The function will be applied
 to each element in the list, and the extra argument will be passed to the
 function and updated.
 """
-function mapFold(inArray::Vector{T}, inFunc::Function, inArg::FT) where {T, FT}
+function mapFold(inArray::Vector{T}, inFunc::F, inArg::FT) where {T, FT, F<:Function}
   local outArg::FT = inArg
   local outArr = Vector{T}(undef, length(inArray))
   for (i,e) in enumerate(inArray)
@@ -232,7 +227,7 @@ end
 ```mapFoldSO``
   Same as map fold. Applies the function to the map, however, it does not return the extra argument.
 """
-function mapFoldSO(inArray::Vector{T}, inFunc::Function, inArg::FT) where {T, FT}
+function mapFoldSO(inArray::Vector{T}, inFunc::F, inArg::FT) where {T, FT, F<:Function}
   local outArg::FT = inArg
   local outArr = Vector{T}(undef, length(inArray))
   for (i,e) in enumerate(inArray)
@@ -242,7 +237,7 @@ function mapFoldSO(inArray::Vector{T}, inFunc::Function, inArg::FT) where {T, FT
   return outArr
 end
 
-function mapFoldRef(inArray::Vector{T}, inFunc::Function, inArg::FT, outRefArg::Ref{FT}) where {T, FT}
+function mapFoldRef(inArray::Vector{T}, inFunc::F, inArg::FT, outRefArg::Ref{FT}) where {T, FT, F<:Function}
   local outArg::FT = inArg
   local outArr = Vector{T}(undef, length(inArray))
   for (i,e) in enumerate(inArray)
@@ -262,7 +257,7 @@ Takes a Vector, an extra argument, an extra constant argument, and a function.
 The function will be applied to each element in the list, and the extra
 argument will be passed to the function and updated.
 """
-function map1Fold(inVec::Vector{TI}, inFunc::Function, inConstArg::ArgT1, inArg, TY = Any)  where {TI, ArgT1}
+function map1Fold(inVec::Vector{TI}, inFunc::F, inConstArg::ArgT1, inArg, TY = Any) where {TI, ArgT1, F<:Function}
   local outArg = inArg
   local outVec::Vector{TY}
   local res::Any
@@ -274,7 +269,7 @@ function map1Fold(inVec::Vector{TI}, inFunc::Function, inConstArg::ArgT1, inArg,
 end
 
 """ Applies a function to only the elements given by the sorted list of indices. """
-function mapIndices(inList::Vector{T}, indices::Vector{Int}, func::Function)  where {T}
+function mapIndices(inList::Vector{T}, indices::Vector{Int}, func::F) where {T, F<:Function}
   local outList::Vector{T} = T[i for i in inList]
   if isempty(indices)
     return outList
@@ -290,7 +285,7 @@ end
 Applies a function to only the elements given by the sorted list of indices.
 inline variant of ```mapIndices```
 """
-function mapIndices!(inList::Vector{T}, indices::Vector{Int}, func::Function)  where {T}
+function mapIndices!(inList::Vector{T}, indices::Vector{Int}, func::F) where {T, F<:Function}
   if isempty(indices)
     return inList
   end
@@ -306,8 +301,8 @@ end
 each array element, and the start value is passed to the function and
 updated. """
 function fold(inArray::Vector{T},
-              inFunction::Function,
-              inStartValue) where {T}
+              inFunction::F,
+              inStartValue) where {T, F<:Function}
   local outResult = inStartValue
   for e in inArray
     outResult = inFunction(e, outResult)
@@ -318,7 +313,7 @@ end
 """ Takes an array, a function, and a start value. The function is applied to
 each array element, and the start value is passed to the function and
 updated. """
-function fold1(inArray::Vector{T}, inFunction::Function, inArg::ArgT, inStartValue::FoldT)  where {T, FoldT, ArgT}
+function fold1(inArray::Vector{T}, inFunction::F, inArg::ArgT, inStartValue::FoldT) where {T, FoldT, ArgT, F<:Function}
   local outResult::FoldT = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg, outResult)
@@ -329,7 +324,7 @@ end
 """ Takes an array, a function, a constant parameter, and a start value. The
 function is applied to each array element, and the start value is passed to
 the function and updated. """
-function fold2(inArray::Vector{T}, inFunction::Function, inArg1::ArgT1, inArg2::ArgT2, inStartValue::FoldT)  where {T, FoldT, ArgT1, ArgT2}
+function fold2(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, F<:Function}
   local outResult::FoldT = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, outResult)
@@ -340,7 +335,7 @@ end
 """ Takes an array, a function, a constant parameter, and a start value. The
 function is applied to each array element, and the start value is passed to
 the function and updated. """
-function fold3(inArray::Vector{T}, inFunction::Function, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inStartValue::FoldT)  where {T, FoldT, ArgT1, ArgT2, ArgT3}
+function fold3(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, ArgT3, F<:Function}
   local outResult::FoldT = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, inArg3, outResult)
@@ -351,7 +346,7 @@ end
 """ Takes an array, a function, four constant parameters, and a start value. The
 function is applied to each array element, and the start value is passed to
 the function and updated. """
-function fold4(inArray::Vector{T}, inFunction::Function, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inArg4::ArgT4, inStartValue::FoldT)  where {T, FoldT, ArgT1, ArgT2, ArgT3, ArgT4}
+function fold4(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inArg4::ArgT4, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, ArgT3, ArgT4, F<:Function}
   local outResult::FoldT = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, inArg3, inArg4, outResult)
@@ -362,7 +357,7 @@ end
 """ Takes an array, a function, four constant parameters, and a start value. The
 function is applied to each array element, and the start value is passed to
 the function and updated. """
-function fold5(inArray::Vector{T}, inFunction::Function, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inArg4::ArgT4, inArg5::ArgT5, inStartValue::FoldT)  where {T, FoldT, ArgT1, ArgT2, ArgT3, ArgT4, ArgT5}
+function fold5(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inArg4::ArgT4, inArg5::ArgT5, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, ArgT3, ArgT4, ArgT5, F<:Function}
   local outResult::FoldT = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, inArg3, inArg4, inArg5, outResult)
@@ -373,7 +368,7 @@ end
 """ Takes an array, a function, four constant parameters, and a start value. The
 function is applied to each array element, and the start value is passed to
 the function and updated. """
-function fold6(inArray::Vector{T}, inFunction::Function, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inArg4::ArgT4, inArg5::ArgT5, inArg6::ArgT6, inStartValue::FoldT)  where {T, FoldT, ArgT1, ArgT2, ArgT3, ArgT4, ArgT5, ArgT6}
+function fold6(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inArg4::ArgT4, inArg5::ArgT5, inArg6::ArgT6, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, ArgT3, ArgT4, ArgT5, ArgT6, F<:Function}
   local outResult::FoldT = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, inArg3, inArg4, inArg5, inArg6, outResult)
@@ -384,7 +379,7 @@ end
 """ Takes an array, a function, and a start value. The function is applied to
 each array element, and the start value is passed to the function and
 updated, additional the index of the passed element is also passed to the function. """
-function foldIndex(inArray::Vector{T}, inFunction::Function, inStartValue::FoldT)  where {T, FoldT}
+function foldIndex(inArray::Vector{T}, inFunction::F, inStartValue::FoldT) where {T, FoldT, F<:Function}
   local outResult::FoldT = inStartValue
   local e::T
   for i in 1:arrayLength(inArray)
@@ -398,7 +393,7 @@ end
 The function performs a reduction of the array to a single value using the
 function. Example:
 reduce([1, 2, 3], intAdd) => 6 """
-function reduce(inArray::Vector{T}, inFunction::Function)  where {T}
+function reduce(inArray::Vector{T}, inFunction::F) where {T, F<:Function}
   local outResult::T
   local rest::List{T}
   outResult = arrayGet(inArray, 1)
@@ -570,7 +565,7 @@ end
 Returns true if the given predicate function returns true for all elements in
 the given Vector.
 """
-function all(inList::Vector{T}, inFunc::Function)  where {T}
+function all(inList::Vector{T}, inFunc::F) where {T, F<:Function}
   local outResult::Bool = false
   for e in inList
     if ! inFunc(e)
@@ -676,7 +671,7 @@ end
 
 """ Takes a value and returns the first element for which the comparison
 function returns true, along with that elements position in the array. """
-function getMemberOnTrue(inValue::VT, inArray::Array{ET}, inFunction::Function)  where {VT, ET}
+function getMemberOnTrue(inValue::VT, inArray::Array{ET}, inFunction::F) where {VT, ET, F<:Function}
   local outIndex::ModelicaInteger
   local outElement::ET
   for i in 1:arrayLength(inArray)
@@ -740,7 +735,7 @@ end
 
 """ Returns true if a certain element exists in the given array as indicated by
 the given predicate function. """
-function exist(arr::Vector{T}, pred::Function)  where {T}
+function exist(arr::Vector{T}, pred::F) where {T, F<:Function}
   local exists::Bool
   for e in arr
     if pred(e)
@@ -766,7 +761,7 @@ Goes through an Array and removes all elements which are equal to the given
 value, using the given comparison function.
 @author:johti17
 """
-function removeOnTrue(val::T, compFunc::Function, arr::Vector{T0}) where {T, T0}
+function removeOnTrue(val::T, compFunc::F, arr::Vector{T0}) where {T, T0, F<:Function}
   [i for i in arr if ! compFunc(val, i)]
 end
 
@@ -864,12 +859,12 @@ end
   Converts an array of type T into string representation.
 """
 function toString(arr::Vector{T},
-                  toStringFunc::Function,
+                  toStringFunc::F,
                   pathString::String,
                   beginStr::String,
                   delimiter::String,
                   endStr::String,
-                  printBeginEndIfEmpty::Bool) where {T}
+                  printBeginEndIfEmpty::Bool) where {T, F<:Function}
   local buffer = IOBuffer()
   if isempty(arr) && printBeginEndIfEmpty
     print(buffer, pathString)
@@ -893,7 +888,7 @@ function toString(arr::Vector{T},
   return String(take!(buffer))
 end
 
-function allEqual(vec::Vector, fun::Function)
+function allEqual(vec::Vector, fun::F) where {F<:Function}
   local allEq = true
   for e1 in vec
     for e2 in vec
@@ -901,6 +896,106 @@ function allEqual(vec::Vector, fun::Function)
     end
   end
   return allEq
+end
+
+"""
+    compare(arr1, arr2, comp_func) -> Int
+
+Compare two arrays element-wise using `comp_func(e1, e2)` which must return
+an integer (-1, 0, or 1). Returns the result of the first non-zero comparison,
+or compares array lengths if all corresponding elements are equal.
+"""
+function compare(arr1::Vector, arr2::Vector, comp_func)
+  local n = min(length(arr1), length(arr2))
+  for i in 1:n
+    local c = comp_func(arr1[i], arr2[i])
+    if c != 0
+      return c
+    end
+  end
+  return length(arr1) < length(arr2) ? -1 : (length(arr1) > length(arr2) ? 1 : 0)
+end
+
+"""
+    generate(n, gen_func) -> Vector
+
+Generate a vector of `n` elements by calling `gen_func(i)` for `i` in `1:n`.
+"""
+function generate(n::Int, gen_func)
+  return [gen_func(i) for i in 1:n]
+end
+
+"""
+    isEqualOnTrue(arr1, arr2, eq_func) -> Bool
+
+Return true if `arr1` and `arr2` have the same length and `eq_func(arr1[i], arr2[i])`
+returns true for all corresponding pairs.
+"""
+function isEqualOnTrue(arr1::Vector, arr2::Vector, eq_func)
+  if length(arr1) != length(arr2)
+    return false
+  end
+  for i in 1:length(arr1)
+    if !eq_func(arr1[i], arr2[i])
+      return false
+    end
+  end
+  return true
+end
+
+"""
+    mapBoolAnd(arr, pred_func) -> Bool
+
+Apply `pred_func` to each element of `arr`; return true only if all
+applications return true (logical AND over mapped results).
+"""
+function mapBoolAnd(arr::Vector, pred_func)
+  for e in arr
+    if !pred_func(e)
+      return false
+    end
+  end
+  return true
+end
+
+"""
+    threadMap(arr1, arr2, map_func) -> Vector
+
+Apply `map_func(arr1[i], arr2[i])` for each index, returning a new vector
+of the results. Both input arrays must have the same length.
+"""
+function threadMap(arr1::Vector, arr2::Vector, map_func)
+  local n = length(arr1)
+  local result = Vector{Any}(undef, n)
+  for i in 1:n
+    result[i] = map_func(arr1[i], arr2[i])
+  end
+  return result
+end
+
+"""
+    transpose(arr::Vector{Vector{T}}) -> Vector{Vector{T}}
+
+Transpose a vector of vectors (matrix in row-major form).
+Returns a new vector of vectors where rows become columns and vice versa.
+
+Example: `transpose([[1,2,3], [4,5,6]])` returns `[[1,4], [2,5], [3,6]]`.
+"""
+function transpose(arr::Vector{Vector{T}}) where {T}
+  if isempty(arr)
+    return Vector{Vector{T}}()
+  end
+  local nrows = length(arr)
+  local ncols = length(arr[1])
+  local result = Vector{Vector{T}}(undef, ncols)
+  for j in 1:ncols
+    local col = Vector{T}(undef, nrows)
+    for i in 1:nrows
+      col[i] = arr[i][j]
+    end
+    result[j] = col
+  end
+  return result
 end
 
 #= So that we can use wildcard imports and named imports when they do occur. Not good Julia practice =#
