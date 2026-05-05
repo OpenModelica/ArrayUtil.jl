@@ -1,7 +1,7 @@
 #= /*
 * This file is part of OpenModelica.
 *
-* Copyright (c) 1998-CurrentYear, Open Source Modelica Consortium (OSMC),
+* Copyright (c) 1998-2026, Open Source Modelica Consortium (OSMC),
 * c/o Linköpings universitet, Department of Computer and Information Science,
 * SE-58183 Linköping, Sweden.
 *
@@ -889,13 +889,12 @@ function toString(arr::Vector{T},
 end
 
 function allEqual(vec::Vector, fun::F) where {F<:Function}
-  local allEq = true
   for e1 in vec
     for e2 in vec
-      allEq = fun(e1, e2)
+      fun(e1, e2) || return false
     end
   end
-  return allEq
+  return true
 end
 
 """

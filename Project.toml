@@ -1,7 +1,7 @@
 name = "ArrayUtil"
 uuid = "53cd29f2-c28d-11e9-1567-bd5452eeb1a0"
-authors = ["johti <johti17@liu.se>"]
-version = "0.2.0"
+authors = ["John Tinnerholm <johti17@liu.se>"]
+version = "0.2.1"
 
 [deps]
 ExportAll = "ad2082ca-a69e-11e9-38fa-e96309a31fe4"
