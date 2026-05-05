@@ -168,7 +168,7 @@ function map1(inArray::Vector{TI}, inFunc::F, inArg::ArgT) where {TI, ArgT, F<:F
   local res
   #=  If the array is empty, use list transformations to fix the types! =#
   if len == 0
-    outArray = listArray(nil())
+    outArray = listArray(nil)
   else
     res = inFunc(arrayGetNoBoundsChecking(inArray, 1), inArg)
     outArray = arrayCreateNoInit(len, res)
@@ -259,7 +259,7 @@ argument will be passed to the function and updated.
 """
 function map1Fold(inVec::Vector{TI}, inFunc::F, inConstArg::ArgT1, inArg, TY = Any) where {TI, ArgT1, F<:Function}
   local outArg = inArg
-  local outVec::Vector{TY}
+  local outVec::Vector{TY} = Vector{TY}()
   local res::Any
   for e in inVec
     (res, outArg) = inFunc(e, inConstArg, outArg)
@@ -421,7 +421,7 @@ function updatewithArrayIndexFirst(inIndex::ModelicaInteger, inArraySrc::Vector{
 end
 
 function updatewithListIndexFirst(inList::List{ModelicaInteger}, inStartIndex::ModelicaInteger, inArraySrc::Vector{T}, inArrayDest::Vector{T})  where {T}
-  for i in inStartIndex:inStartIndex + listLength(inList)
+  for i in inStartIndex:inStartIndex + listLength(inList) - 1
     arrayUpdate(inArrayDest, i, inArraySrc[i])
   end
 end
@@ -643,7 +643,7 @@ end
 
 """ Gets the elements between inStart and inEnd. """
 function getRange(inStart::ModelicaInteger, inEnd::ModelicaInteger, inArray::Vector{T})  where {T}
-  local outList::List{T} = nil()
+  local outList::List{T} = nil
   local value::T
   if inStart > arrayLength(inArray)
     fail()
@@ -694,7 +694,7 @@ function reverse(inArray::Vector{T})  where {T}
   local elem2::T
   outArray = inArray
   size = arrayLength(inArray)
-  for i in 1:size / 2
+  for i in 1:div(size, 2)
     elem1 = arrayGet(inArray, i)
     elem2 = arrayGet(inArray, size - i + 1)
     outArray = arrayUpdate(outArray, i, elem2)
@@ -826,7 +826,7 @@ end
 Fills an array with inElement inCount times.
 """
 function fill(inElement::T, inCount::Int) where {T}
-  return Vector{T}(inElement, inCount)
+  return Base.fill(inElement, inCount)
 end
 
 """
