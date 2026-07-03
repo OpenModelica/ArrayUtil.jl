@@ -129,7 +129,7 @@ end
 
 """ Takes an array and a list of indices, and returns a new array with the
 indexed elements. Will fail if any index is out of bounds. """
-function select(inArray::Vector{T}, inIndices::List{ModelicaInteger})  where {T}
+function select(inArray::Vector{T}, inIndices::List)  where {T}
   local outArray::Vector{T}
   local i::ModelicaInteger = 1
   outArray = arrayCreateNoInit(listLength(inIndices), inArray[1])
@@ -150,35 +150,22 @@ function map(inArray::Vector{TI}, inFunc::F) where {TI, F<:Function}
   if len == 0
     return Any[]
   end
-  local first_result = inFunc(inArray[1])
-  local outArray = Vector{typeof(first_result)}(undef, len)
-  outArray[1] = first_result
-  for i in 2:len
-    outArray[i] = inFunc(inArray[i])
-  end
-  return outArray
+  # Base.map widens the element type at runtime; preallocating from the first
+  # result's concrete type fails when later results are other records of the
+  # same uniontype.
+  return Base.map(inFunc, inArray)
 end
 
 """ Takes an array, an extra arguments, and a function over the elements of the
 array, which is applied to each element. The updated elements will form a new
 array, leaving the original array unchanged. """
 function map1(inArray::Vector{TI}, inFunc::F, inArg::ArgT) where {TI, ArgT, F<:Function}
-  local outArray::Vector
   local len::ModelicaInteger = arrayLength(inArray)
-  local res
-  #=  If the array is empty, use list transformations to fix the types! =#
   if len == 0
-    outArray = listArray(nil)
-  else
-    res = inFunc(arrayGetNoBoundsChecking(inArray, 1), inArg)
-    outArray = arrayCreateNoInit(len, res)
-    arrayUpdate(outArray, 1, res)
-    for i in 2:len
-      arrayUpdate(outArray, i, inFunc(arrayGetNoBoundsChecking(inArray, i), inArg))
-    end
+    return listArray(nil)
   end
-  #=  If the array isn't empty, use the first element to create the new array. =#
-  outArray
+  # Base.map widens the element type at runtime (see map).
+  return Base.map(e -> inFunc(e, inArg), inArray)
 end
 
 """ Applies a non-returning function to all elements in an array. """
@@ -190,22 +177,11 @@ end
 
 """ As map, but takes a list in and creates an array from the result. """
 function mapList(inList::List{TI}, inFunc::F) where {TI, F<:Function}
-  local outArray::Vector
-  local i::ModelicaInteger = 2
-  local len::ModelicaInteger = listLength(inList)
-  local res
-  if len == 0
-    outArray = []
-  else
-    res = inFunc(listHead(inList))
-    outArray = arrayCreateNoInit(len, res)
-    arrayUpdate(outArray, 1, res)
-    for e in listRest(inList)
-      arrayUpdate(outArray, i, inFunc(e))
-      i = i + 1
-    end
+  if listEmpty(inList)
+    return []
   end
-  outArray
+  # collect widens the element type at runtime (see map).
+  return Base.collect(inFunc(e) for e in inList)
 end
 
 """
@@ -404,13 +380,13 @@ function reduce(inArray::Vector{T}, inFunction::F) where {T, F<:Function}
 end
 
 """ Like arrayUpdate, but with the index first so it can be used with List.map. """
-function updateIndexFirst(inIndex::ModelicaInteger, inValue::T, inArray::Vector{T})  where {T}
+function updateIndexFirst(inIndex::ModelicaInteger, inValue, inArray::Vector)
   arrayUpdate(inArray, inIndex, inValue)
 end
 
 """ Like arrayGet, but with the index first so it can used with List.map. """
-function getIndexFirst(inIndex::ModelicaInteger, inArray::Vector{T})  where {T}
-  local outElement::T = arrayGet(inArray, inIndex)
+function getIndexFirst(inIndex::ModelicaInteger, inArray::Vector)
+  local outElement = arrayGet(inArray, inIndex)
   outElement
 end
 
@@ -451,28 +427,29 @@ end
 
 """ Expands an array to the given size, or does nothing if the array is already
 large enough. """
-function expandToSize(inNewSize::ModelicaInteger, inArray::Vector{T}, inFill::T)  where {T}
-  local outArray::Vector{T}
+function expandToSize(inNewSize::ModelicaInteger, inArray::Vector, inFill)
+  local outArray::Vector
   if inNewSize <= arrayLength(inArray)
     outArray = inArray
   else
-    outArray = arrayCreate(inNewSize, inFill)
-    copy(inArray, outArray)
+    outArray = Vector{Base.typejoin(eltype(inArray), typeof(inFill))}(undef, inNewSize)
+    fill!(outArray, inFill)
+    copyto!(outArray, 1, inArray, 1, arrayLength(inArray))
   end
   outArray
 end
 
 """ Increases the number of elements of an array with inN. Each new element is
 assigned the value inFill. """
-function expand(inN::ModelicaInteger, inArray::Vector{T}, inFill::T)  where {T}
-  local outArray::Vector{T}
+function expand(inN::ModelicaInteger, inArray::Vector, inFill)
+  local outArray::Vector
   local len::ModelicaInteger
   if inN < 1
     outArray = inArray
   else
     len = arrayLength(inArray)
-    outArray = arrayCreateNoInit(len + inN, inFill)
-    copy(inArray, outArray)
+    outArray = Vector{Base.typejoin(eltype(inArray), typeof(inFill))}(undef, len + inN)
+    copyto!(outArray, 1, inArray, 1, len)
     setRange(len + 1, len + inN, outArray, inFill)
   end
   outArray
@@ -497,16 +474,16 @@ function expandOnDemand(inNewSize::ModelicaInteger #= The number of elements tha
   outArray #= The resulting array. =#
 end
 
-""" Concatenates an element to a list element of an array. """
-function consToElement(inIndex::ModelicaInteger, inElement::T, inArray::Array{List{T}})  where {T}
-  local outArray::Array{List{T}}
+""" Concatenates an element to a list element of an array. The array may be typed
+Vector{List} (untyped element lists); do not constrain the element to the list type. """
+function consToElement(inIndex::ModelicaInteger, inElement, inArray::Array{<:List})
   outArray = arrayUpdate(inArray, inIndex, inElement <| inArray[inIndex])
   outArray
 end
 
 """ Appends a list to a list element of an array. """
-function appendToElement(inIndex::ModelicaInteger, inElements::List{T}, inArray::Array{List{T}})  where {T}
-  local outArray::Array{List{T}}
+function appendToElement(inIndex::ModelicaInteger, inElements::List, inArray::Array)
+  local outArray::Array
   outArray = arrayUpdate(inArray, inIndex, listAppend(inArray[inIndex], inElements))
   outArray
 end

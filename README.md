@@ -1,4 +1,4 @@
-[![CI](https://github.com/JKRT/ArrayUtil.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/JKRT/ArrayUtil.jl/actions/workflows/ci.yml)
+[![CI](https://github.com/OpenModelica/ArrayUtil.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/OpenModelica/ArrayUtil.jl/actions/workflows/ci.yml)
 [![License: OSMC-PL](https://img.shields.io/badge/license-OSMC--PL-lightgrey.svg)](LICENSE.md)
 
 # ArrayUtil.jl
@@ -8,7 +8,7 @@ A Julia translation of the MetaModelica `ArrayUtil` module: `map`, `fold`,
 `select`, `findFirstOnTrue`, and friends, operating on Julia `Vector{T}`
 with optional interop to `MetaModelica` linked lists.
 
-This package is part of the [OM.jl](https://github.com/JKRT/OM.jl) suite.
+This package is part of the [OM.jl](https://github.com/OpenModelica/OM.jl) suite.
 
 ## Installation
 
