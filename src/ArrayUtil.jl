@@ -153,7 +153,13 @@ function map(inArray::Vector{TI}, inFunc::F) where {TI, F<:Function}
   # Base.map widens the element type at runtime; preallocating from the first
   # result's concrete type fails when later results are other records of the
   # same uniontype.
-  return Base.map(inFunc, inArray)
+  local out = Base.map(inFunc, inArray)
+  # An array of lists keeps the abstract eltype: rows mutate between Cons and
+  # Nil in place downstream.
+  if eltype(out) !== List && eltype(out) <: List
+    return convert(Vector{List}, out)
+  end
+  return out
 end
 
 """ Takes an array, an extra arguments, and a function over the elements of the
