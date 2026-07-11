@@ -560,6 +560,21 @@ function all(inList::Vector{T}, inFunc::F) where {T, F<:Function}
   return outResult
 end
 
+"""
+Returns true if the given predicate function returns true for any element in
+the given Vector.
+"""
+function any(inArray::Vector{T}, inFunc::F) where {T, F<:Function}
+  local outResult::Bool = false
+  for e in inArray
+    if inFunc(e)
+      outResult = true
+      return outResult
+    end
+  end
+  return outResult
+end
+
 
 """ Copies all values from inArraySrc to inArrayDest. Fails if inArraySrc is
 larger than inArrayDest.
