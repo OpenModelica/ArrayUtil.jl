@@ -472,9 +472,11 @@ function expandOnDemand(inNewSize::ModelicaInteger #= The number of elements tha
   if inNewSize <= len
     outArray = inArray
   else
-    new_size = realInt(intReal(len) * inExpansionFactor)
-    outArray = arrayCreateNoInit(new_size, inFillValue)
-    copy(inArray, outArray)
+    # The grown size must actually FIT the request; the factor alone undersizes
+    # small arrays (len 0-2) and the caller then writes out of bounds.
+    new_size = max(realInt(intReal(len) * inExpansionFactor), inNewSize)
+    outArray = Vector{T}(undef, new_size)
+    copyto!(outArray, 1, inArray, 1, len)
     setRange(len + 1, new_size, outArray, inFillValue)
   end
   outArray #= The resulting array. =#
