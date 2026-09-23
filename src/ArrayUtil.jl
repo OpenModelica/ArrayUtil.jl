@@ -51,7 +51,7 @@ end
 """ Same as arrayMapNoCopy, but with an additional arguments that's updated for
 each call. """
 function mapNoCopy_1(inArray::Vector{T}, inFunc::F, inArg::ArgT) where {T, ArgT, F<:Function}
-  local outArg::ArgT = inArg
+  local outArg = inArg
   local outArray::Vector{T} = inArray
   local e::T
   for i in 1:arrayLength(inArray)
@@ -292,8 +292,8 @@ function fold(inArray::Vector{T},
   outResult
 end
 
-# Fold accumulators stay untyped here and in foldIndex and mapFold: a start value
-# such as nil is narrower than the declared fold type the callback returns.
+# Fold accumulators stay untyped here and in foldIndex, mapFold and mapNoCopy_1: a
+# start value such as nil is narrower than the declared fold type the callback returns.
 """ Takes an array, a function, and a start value. The function is applied to
 each array element, and the start value is passed to the function and
 updated. """

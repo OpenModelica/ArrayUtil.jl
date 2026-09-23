@@ -244,4 +244,12 @@ end
     out, acc = ArrayUtil.mapFold([1, 2], (e, acc) -> (2e, cons(e, acc)), list())
     @test out == [2, 4]
     @test collect(acc) == [2, 1]
+    @test collect(ArrayUtil.fold4([1], (e, a, b, c, d, acc) -> cons(e + a + b + c + d, acc), 1, 2, 3, 4, list())) == [11]
+    @test collect(ArrayUtil.fold5([1], (e, a, b, c, d, f, acc) -> cons(e + a + b + c + d + f, acc), 1, 2, 3, 4, 5, list())) == [16]
+    @test collect(ArrayUtil.fold6([1], (e, a, b, c, d, f, g, acc) -> cons(e + a + b + c + d + f + g, acc), 1, 2, 3, 4, 5, 6, list())) == [22]
+    src = [1, 2]
+    out, acc = ArrayUtil.mapNoCopy_1(src, pair -> (pair[1] + 1, cons(pair[1], pair[2])), list())
+    @test out === src
+    @test src == [2, 3]
+    @test collect(acc) == [2, 1]
 end
