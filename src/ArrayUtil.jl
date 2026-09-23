@@ -196,7 +196,7 @@ to each element in the list, and the extra argument will be passed to the
 function and updated.
 """
 function mapFold(inArray::Vector{T}, inFunc::F, inArg::FT) where {T, FT, F<:Function}
-  local outArg::FT = inArg
+  local outArg = inArg
   local outArr = Vector{T}(undef, length(inArray))
   for (i,e) in enumerate(inArray)
     (res, outArg) = inFunc(e, outArg)
@@ -292,11 +292,13 @@ function fold(inArray::Vector{T},
   outResult
 end
 
+# Fold accumulators stay untyped here and in foldIndex and mapFold: a start value
+# such as nil is narrower than the declared fold type the callback returns.
 """ Takes an array, a function, and a start value. The function is applied to
 each array element, and the start value is passed to the function and
 updated. """
 function fold1(inArray::Vector{T}, inFunction::F, inArg::ArgT, inStartValue::FoldT) where {T, FoldT, ArgT, F<:Function}
-  local outResult::FoldT = inStartValue
+  local outResult = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg, outResult)
   end
@@ -307,7 +309,7 @@ end
 function is applied to each array element, and the start value is passed to
 the function and updated. """
 function fold2(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, F<:Function}
-  local outResult::FoldT = inStartValue
+  local outResult = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, outResult)
   end
@@ -318,7 +320,7 @@ end
 function is applied to each array element, and the start value is passed to
 the function and updated. """
 function fold3(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, ArgT3, F<:Function}
-  local outResult::FoldT = inStartValue
+  local outResult = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, inArg3, outResult)
   end
@@ -329,7 +331,7 @@ end
 function is applied to each array element, and the start value is passed to
 the function and updated. """
 function fold4(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inArg4::ArgT4, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, ArgT3, ArgT4, F<:Function}
-  local outResult::FoldT = inStartValue
+  local outResult = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, inArg3, inArg4, outResult)
   end
@@ -340,7 +342,7 @@ end
 function is applied to each array element, and the start value is passed to
 the function and updated. """
 function fold5(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inArg4::ArgT4, inArg5::ArgT5, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, ArgT3, ArgT4, ArgT5, F<:Function}
-  local outResult::FoldT = inStartValue
+  local outResult = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, inArg3, inArg4, inArg5, outResult)
   end
@@ -351,7 +353,7 @@ end
 function is applied to each array element, and the start value is passed to
 the function and updated. """
 function fold6(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inArg4::ArgT4, inArg5::ArgT5, inArg6::ArgT6, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, ArgT3, ArgT4, ArgT5, ArgT6, F<:Function}
-  local outResult::FoldT = inStartValue
+  local outResult = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, inArg3, inArg4, inArg5, inArg6, outResult)
   end
@@ -362,7 +364,7 @@ end
 each array element, and the start value is passed to the function and
 updated, additional the index of the passed element is also passed to the function. """
 function foldIndex(inArray::Vector{T}, inFunction::F, inStartValue::FoldT) where {T, FoldT, F<:Function}
-  local outResult::FoldT = inStartValue
+  local outResult = inStartValue
   local e::T
   for i in 1:arrayLength(inArray)
     e = arrayGet(inArray, i)
