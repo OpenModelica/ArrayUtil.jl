@@ -51,7 +51,7 @@ end
 """ Same as arrayMapNoCopy, but with an additional arguments that's updated for
 each call. """
 function mapNoCopy_1(inArray::Vector{T}, inFunc::F, inArg::ArgT) where {T, ArgT, F<:Function}
-  local outArg::ArgT = inArg
+  local outArg = inArg
   local outArray::Vector{T} = inArray
   local e::T
   for i in 1:arrayLength(inArray)
@@ -129,7 +129,7 @@ end
 
 """ Takes an array and a list of indices, and returns a new array with the
 indexed elements. Will fail if any index is out of bounds. """
-function select(inArray::Vector{T}, inIndices::List{ModelicaInteger})  where {T}
+function select(inArray::Vector{T}, inIndices::List)  where {T}
   local outArray::Vector{T}
   local i::ModelicaInteger = 1
   outArray = arrayCreateNoInit(listLength(inIndices), inArray[1])
@@ -150,35 +150,28 @@ function map(inArray::Vector{TI}, inFunc::F) where {TI, F<:Function}
   if len == 0
     return Any[]
   end
-  local first_result = inFunc(inArray[1])
-  local outArray = Vector{typeof(first_result)}(undef, len)
-  outArray[1] = first_result
-  for i in 2:len
-    outArray[i] = inFunc(inArray[i])
+  # Base.map widens the element type at runtime; preallocating from the first
+  # result's concrete type fails when later results are other records of the
+  # same uniontype.
+  local out = Base.map(inFunc, inArray)
+  # An array of lists keeps the abstract eltype: rows mutate between Cons and
+  # Nil in place downstream.
+  if eltype(out) !== List && eltype(out) <: List
+    return convert(Vector{List}, out)
   end
-  return outArray
+  return out
 end
 
 """ Takes an array, an extra arguments, and a function over the elements of the
 array, which is applied to each element. The updated elements will form a new
 array, leaving the original array unchanged. """
 function map1(inArray::Vector{TI}, inFunc::F, inArg::ArgT) where {TI, ArgT, F<:Function}
-  local outArray::Vector
   local len::ModelicaInteger = arrayLength(inArray)
-  local res
-  #=  If the array is empty, use list transformations to fix the types! =#
   if len == 0
-    outArray = listArray(nil)
-  else
-    res = inFunc(arrayGetNoBoundsChecking(inArray, 1), inArg)
-    outArray = arrayCreateNoInit(len, res)
-    arrayUpdate(outArray, 1, res)
-    for i in 2:len
-      arrayUpdate(outArray, i, inFunc(arrayGetNoBoundsChecking(inArray, i), inArg))
-    end
+    return listArray(nil)
   end
-  #=  If the array isn't empty, use the first element to create the new array. =#
-  outArray
+  # Base.map widens the element type at runtime (see map).
+  return Base.map(e -> inFunc(e, inArg), inArray)
 end
 
 """ Applies a non-returning function to all elements in an array. """
@@ -190,22 +183,11 @@ end
 
 """ As map, but takes a list in and creates an array from the result. """
 function mapList(inList::List{TI}, inFunc::F) where {TI, F<:Function}
-  local outArray::Vector
-  local i::ModelicaInteger = 2
-  local len::ModelicaInteger = listLength(inList)
-  local res
-  if len == 0
-    outArray = []
-  else
-    res = inFunc(listHead(inList))
-    outArray = arrayCreateNoInit(len, res)
-    arrayUpdate(outArray, 1, res)
-    for e in listRest(inList)
-      arrayUpdate(outArray, i, inFunc(e))
-      i = i + 1
-    end
+  if listEmpty(inList)
+    return []
   end
-  outArray
+  # collect widens the element type at runtime (see map).
+  return Base.collect(inFunc(e) for e in inList)
 end
 
 """
@@ -214,7 +196,7 @@ to each element in the list, and the extra argument will be passed to the
 function and updated.
 """
 function mapFold(inArray::Vector{T}, inFunc::F, inArg::FT) where {T, FT, F<:Function}
-  local outArg::FT = inArg
+  local outArg = inArg
   local outArr = Vector{T}(undef, length(inArray))
   for (i,e) in enumerate(inArray)
     (res, outArg) = inFunc(e, outArg)
@@ -310,11 +292,13 @@ function fold(inArray::Vector{T},
   outResult
 end
 
+# Fold accumulators stay untyped here and in foldIndex, mapFold and mapNoCopy_1: a
+# start value such as nil is narrower than the declared fold type the callback returns.
 """ Takes an array, a function, and a start value. The function is applied to
 each array element, and the start value is passed to the function and
 updated. """
 function fold1(inArray::Vector{T}, inFunction::F, inArg::ArgT, inStartValue::FoldT) where {T, FoldT, ArgT, F<:Function}
-  local outResult::FoldT = inStartValue
+  local outResult = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg, outResult)
   end
@@ -325,7 +309,7 @@ end
 function is applied to each array element, and the start value is passed to
 the function and updated. """
 function fold2(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, F<:Function}
-  local outResult::FoldT = inStartValue
+  local outResult = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, outResult)
   end
@@ -336,7 +320,7 @@ end
 function is applied to each array element, and the start value is passed to
 the function and updated. """
 function fold3(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, ArgT3, F<:Function}
-  local outResult::FoldT = inStartValue
+  local outResult = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, inArg3, outResult)
   end
@@ -347,7 +331,7 @@ end
 function is applied to each array element, and the start value is passed to
 the function and updated. """
 function fold4(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inArg4::ArgT4, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, ArgT3, ArgT4, F<:Function}
-  local outResult::FoldT = inStartValue
+  local outResult = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, inArg3, inArg4, outResult)
   end
@@ -358,7 +342,7 @@ end
 function is applied to each array element, and the start value is passed to
 the function and updated. """
 function fold5(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inArg4::ArgT4, inArg5::ArgT5, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, ArgT3, ArgT4, ArgT5, F<:Function}
-  local outResult::FoldT = inStartValue
+  local outResult = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, inArg3, inArg4, inArg5, outResult)
   end
@@ -369,7 +353,7 @@ end
 function is applied to each array element, and the start value is passed to
 the function and updated. """
 function fold6(inArray::Vector{T}, inFunction::F, inArg1::ArgT1, inArg2::ArgT2, inArg3::ArgT3, inArg4::ArgT4, inArg5::ArgT5, inArg6::ArgT6, inStartValue::FoldT) where {T, FoldT, ArgT1, ArgT2, ArgT3, ArgT4, ArgT5, ArgT6, F<:Function}
-  local outResult::FoldT = inStartValue
+  local outResult = inStartValue
   for e in inArray
     outResult = inFunction(e, inArg1, inArg2, inArg3, inArg4, inArg5, inArg6, outResult)
   end
@@ -380,7 +364,7 @@ end
 each array element, and the start value is passed to the function and
 updated, additional the index of the passed element is also passed to the function. """
 function foldIndex(inArray::Vector{T}, inFunction::F, inStartValue::FoldT) where {T, FoldT, F<:Function}
-  local outResult::FoldT = inStartValue
+  local outResult = inStartValue
   local e::T
   for i in 1:arrayLength(inArray)
     e = arrayGet(inArray, i)
@@ -404,13 +388,13 @@ function reduce(inArray::Vector{T}, inFunction::F) where {T, F<:Function}
 end
 
 """ Like arrayUpdate, but with the index first so it can be used with List.map. """
-function updateIndexFirst(inIndex::ModelicaInteger, inValue::T, inArray::Vector{T})  where {T}
+function updateIndexFirst(inIndex::ModelicaInteger, inValue, inArray::Vector)
   arrayUpdate(inArray, inIndex, inValue)
 end
 
 """ Like arrayGet, but with the index first so it can used with List.map. """
-function getIndexFirst(inIndex::ModelicaInteger, inArray::Vector{T})  where {T}
-  local outElement::T = arrayGet(inArray, inIndex)
+function getIndexFirst(inIndex::ModelicaInteger, inArray::Vector)
+  local outElement = arrayGet(inArray, inIndex)
   outElement
 end
 
@@ -451,28 +435,29 @@ end
 
 """ Expands an array to the given size, or does nothing if the array is already
 large enough. """
-function expandToSize(inNewSize::ModelicaInteger, inArray::Vector{T}, inFill::T)  where {T}
-  local outArray::Vector{T}
+function expandToSize(inNewSize::ModelicaInteger, inArray::Vector, inFill)
+  local outArray::Vector
   if inNewSize <= arrayLength(inArray)
     outArray = inArray
   else
-    outArray = arrayCreate(inNewSize, inFill)
-    copy(inArray, outArray)
+    outArray = Vector{Base.typejoin(eltype(inArray), typeof(inFill))}(undef, inNewSize)
+    fill!(outArray, inFill)
+    copyto!(outArray, 1, inArray, 1, arrayLength(inArray))
   end
   outArray
 end
 
 """ Increases the number of elements of an array with inN. Each new element is
 assigned the value inFill. """
-function expand(inN::ModelicaInteger, inArray::Vector{T}, inFill::T)  where {T}
-  local outArray::Vector{T}
+function expand(inN::ModelicaInteger, inArray::Vector, inFill)
+  local outArray::Vector
   local len::ModelicaInteger
   if inN < 1
     outArray = inArray
   else
     len = arrayLength(inArray)
-    outArray = arrayCreateNoInit(len + inN, inFill)
-    copy(inArray, outArray)
+    outArray = Vector{Base.typejoin(eltype(inArray), typeof(inFill))}(undef, len + inN)
+    copyto!(outArray, 1, inArray, 1, len)
     setRange(len + 1, len + inN, outArray, inFill)
   end
   outArray
@@ -489,24 +474,26 @@ function expandOnDemand(inNewSize::ModelicaInteger #= The number of elements tha
   if inNewSize <= len
     outArray = inArray
   else
-    new_size = realInt(intReal(len) * inExpansionFactor)
-    outArray = arrayCreateNoInit(new_size, inFillValue)
-    copy(inArray, outArray)
+    # The grown size must actually FIT the request; the factor alone undersizes
+    # small arrays (len 0-2) and the caller then writes out of bounds.
+    new_size = max(realInt(intReal(len) * inExpansionFactor), inNewSize)
+    outArray = Vector{T}(undef, new_size)
+    copyto!(outArray, 1, inArray, 1, len)
     setRange(len + 1, new_size, outArray, inFillValue)
   end
   outArray #= The resulting array. =#
 end
 
-""" Concatenates an element to a list element of an array. """
-function consToElement(inIndex::ModelicaInteger, inElement::T, inArray::Array{List{T}})  where {T}
-  local outArray::Array{List{T}}
+""" Concatenates an element to a list element of an array. The array may be typed
+Vector{List} (untyped element lists); do not constrain the element to the list type. """
+function consToElement(inIndex::ModelicaInteger, inElement, inArray::Array{<:List})
   outArray = arrayUpdate(inArray, inIndex, inElement <| inArray[inIndex])
   outArray
 end
 
 """ Appends a list to a list element of an array. """
-function appendToElement(inIndex::ModelicaInteger, inElements::List{T}, inArray::Array{List{T}})  where {T}
-  local outArray::Array{List{T}}
+function appendToElement(inIndex::ModelicaInteger, inElements::List, inArray::Array)
+  local outArray::Array
   outArray = arrayUpdate(inArray, inIndex, listAppend(inArray[inIndex], inElements))
   outArray
 end
@@ -574,6 +561,21 @@ function all(inList::Vector{T}, inFunc::F) where {T, F<:Function}
     end
   end
   outResult = true
+  return outResult
+end
+
+"""
+Returns true if the given predicate function returns true for any element in
+the given Vector.
+"""
+function any(inArray::Vector{T}, inFunc::F) where {T, F<:Function}
+  local outResult::Bool = false
+  for e in inArray
+    if inFunc(e)
+      outResult = true
+      return outResult
+    end
+  end
   return outResult
 end
 
