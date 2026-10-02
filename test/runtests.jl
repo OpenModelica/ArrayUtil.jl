@@ -232,3 +232,24 @@ end
     @test ArrayUtil.transpose([[1, 2], [3, 4], [5, 6]]) == [[1, 3, 5], [2, 4, 6]]
     @test ArrayUtil.transpose(Vector{Vector{Int}}()) == Vector{Vector{Int}}()
 end
+
+@testset "ArrayUtil folds keep the declared fold type" begin
+    # A nil start value is narrower than the list the callback returns.
+    marked(e, i, acc) = e == 1 ? cons(i, acc) : acc
+    @test collect(ArrayUtil.foldIndex([1, 0, 1], marked, list())) == [3, 1]
+    @test isempty(collect(ArrayUtil.foldIndex(Int[], marked, list())))
+    @test collect(ArrayUtil.fold1([1, 2], (e, a, acc) -> cons(e + a, acc), 10, list())) == [12, 11]
+    @test collect(ArrayUtil.fold2([1, 2], (e, a, b, acc) -> cons(e + a + b, acc), 10, 100, list())) == [112, 111]
+    @test collect(ArrayUtil.fold3([1], (e, a, b, c, acc) -> cons(e + a + b + c, acc), 1, 2, 3, list())) == [7]
+    out, acc = ArrayUtil.mapFold([1, 2], (e, acc) -> (2e, cons(e, acc)), list())
+    @test out == [2, 4]
+    @test collect(acc) == [2, 1]
+    @test collect(ArrayUtil.fold4([1], (e, a, b, c, d, acc) -> cons(e + a + b + c + d, acc), 1, 2, 3, 4, list())) == [11]
+    @test collect(ArrayUtil.fold5([1], (e, a, b, c, d, f, acc) -> cons(e + a + b + c + d + f, acc), 1, 2, 3, 4, 5, list())) == [16]
+    @test collect(ArrayUtil.fold6([1], (e, a, b, c, d, f, g, acc) -> cons(e + a + b + c + d + f + g, acc), 1, 2, 3, 4, 5, 6, list())) == [22]
+    src = [1, 2]
+    out, acc = ArrayUtil.mapNoCopy_1(src, pair -> (pair[1] + 1, cons(pair[1], pair[2])), list())
+    @test out === src
+    @test src == [2, 3]
+    @test collect(acc) == [2, 1]
+end
